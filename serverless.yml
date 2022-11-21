@@ -1,0 +1,81 @@
+service: phone-bill-serverless
+frameworkVersion: '3'
+useDotenv: true
+
+plugins:
+  - serverless-dotenv-plugin
+
+custom:
+  tableName: ${env:TABLE_NAME}
+  cognitoPoolId: ${env:COGNITO_POOL_ID}
+  clientId: ${env:CLIENT_ID}
+
+provider:
+  name: aws
+  region: us-west-1
+  runtime: nodejs14.x
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [ StatementTable, Arn ]
+  httpApi:
+    cors: true
+    authorizers:
+      someJwtAuthorizer:
+        type: jwt
+        issuerUrl: https://cognito-idp.${self:provider.region}.amazonaws.com/${self:custom.cognitoPoolId}
+        identitySource: $request.header.Authorization
+        audience: 
+          - ${self:custom.clientId}   
+  environment:
+    STATEMENT_TABLE: ${self:custom.tableName}
+
+functions:
+  api:
+    handler: handler.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /statements/{statementID}
+      - httpApi:
+          method: POST  
+          path: /statements
+          authorizer: 
+            name: someJwtAuthorizer
+      - httpApi:
+          method: DELETE
+          path: /statements/{statementID}
+          authorizer: 
+            name: someJwtAuthorizer
+      - httpApi:
+          method: PUT
+          path: /statements/{statementID}
+          authorizer: 
+            name: someJwtAuthorizer
+
+resources:
+  Resources:
+    StatementTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: month
+            AttributeType: N
+          - AttributeName: year
+            AttributeType: N
+        KeySchema:
+          - AttributeName: year
+            KeyType: HASH
+          - AttributeName: month
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.tableName}
