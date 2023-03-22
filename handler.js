@@ -17,7 +17,6 @@ app.post("/statements", async (req, res) => {
     res.status(400).json({ error: 'Invalid statement' });
     return;
   }
-      
 
   try {
     await dynamoDb.put({
@@ -27,12 +26,36 @@ app.post("/statements", async (req, res) => {
       ExpressionAttributeNames: { "#year": "year", "#month": "month" }
     });
   } catch (error) {
-    console.log(error);
+    console.log(JSON.stringify(error));
+
+    if (error?.name ?? '' === 'ConditionalCheckFailedException') {
+      res.status(422).json({ error: "Cannot create an already existent statement" });
+      return;
+    }
     res.status(500).json({ error: "Could not save statement." });
     return;
   }
 
   res.status(201).json({ message: "Successfully created." });
+});
+
+app.get('/statements', async (req, res) => {
+  try {
+    const queryData = await dynamoDb.scan({
+      TableName: STATEMENT_TABLE, 
+      ProjectionExpression: '#month, #year, #createDate',
+      ExpressionAttributeNames: { "#year": "year", "#month": "month", "#createDate": 'createDateTime' },
+      Limit: 20
+    });
+
+    res.status(200).json({
+      statements: queryData.Items
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({ error: "Server Error!" });
+  }
 });
 
 app.get('/statements/:statementID', async (req, res) => {

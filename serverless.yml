@@ -61,6 +61,11 @@ functions:
           path: /statements/{statementID}
           authorizer: 
             name: someJwtAuthorizer
+      - httpApi:
+          method: GET
+          path: /statements
+          authorizer: 
+            name: someJwtAuthorizer
 
 resources:
   Resources:
