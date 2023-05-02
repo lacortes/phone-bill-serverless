@@ -12,6 +12,10 @@ app.use(express.json());
 
 app.post("/statements", async (req, res) => {
   const statement = req.body;
+
+  const now = (new Date()).toISOString();
+  statement.lastUpdateDateTime = now;
+  statement.createDateTime = now;  
   
   if (!statement) {
     res.status(400).json({ error: 'Invalid statement' });
@@ -150,6 +154,30 @@ app.delete('/statements/:statementID', async (req, res) => {
 });
 
 app.put('/statements/:statementID', async (req, res) => {
+  const statement = req.body;
+
+  if (!statement) {
+    res.status(400).json({ error: 'Missing Statement' });
+    return;
+  }
+
+  try {
+    await dynamoDb.put({
+      TableName: STATEMENT_TABLE,
+      Item: statement,
+      ConditionExpression: "(attribute_exists(#year) AND attribute_exists(#month)) AND lastUpdateDateTime = :u",
+      ExpressionAttributeValues: {
+        ":u": statement.lastUpdateDateTime
+      },
+      ExpressionAttributeNames: { "#year": "year", "#month": "month" }
+    });
+  } catch (err) {
+    console.error(err);
+    console.debug('statement: ', JSON.stringify(statement));
+    res.status(500).json({ error: "Server Error" });
+    return;
+  }
+
   res.status(204);
 });
 

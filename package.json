@@ -7,6 +7,7 @@
     "@aws-sdk/client-dynamodb": "^3.183.0",
     "@aws-sdk/lib-dynamodb": "^3.183.0",
     "express": "^4.17.1",
+    "serverless": "^3.30.1",
     "serverless-http": "^2.7.0"
   },
   "devDependencies": {
